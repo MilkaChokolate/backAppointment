@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
 const a = require('crypto').randomBytes(64).toString('hex');
 console.log(a);
 
@@ -34,26 +35,31 @@ let UserSchema = new Schema2({
 
 const User = mongoose.model('User', UserSchema);
 
-app.post('/Registration', function (req, res) {
-    if ((typeof req.body.username === 'string') && (typeof req.body.password === 'string') && (req.body.username !=="") && (req.body.password !== "")) {
-        let salt = bcrypt.genSaltSync(10); //?????
-        let passwordToSave = bcrypt.hashSync(req.body.password, salt);
 
-        const user = new User({
+app.post('/Registration', function (req, res) {
+    if ((typeof req.body.username !== 'string') && (typeof req.body.password !== 'string') && (req.body.username === "") && (req.body.password === "")) {
+        return res.send({result: "Что-то не так, попробуйте снова"})
+    }
+
+    let salt = bcrypt.genSaltSync(10); //?????
+    let passwordToSave = bcrypt.hashSync(req.body.password, salt);
+
+    const user = new User({
         username: req.body.username,
         password: passwordToSave,
-        });
-        user.save()
+    });
+    user.save()
         .then(result => {
-            res.send({result : 'Пользователь добавлен'})
+            const token = jwt.sign({ username : req.body.username }, 'shhhhh');;
+            res.send({result : token})
         })
-            .catch(err => {
-                return res.sendStatus(500);
-                console.log(err);
-            })
-    } else {
-        res.send({result: "Something went wrong"})
-    }
+        .catch(err => {
+            if (err.code === 11000){
+                return res.send({result : "Пользователь уже существует"})
+            }
+            console.log(err)
+            return res.sendStatus(500);
+        })
 
 })
 app.listen(3012, function () {
